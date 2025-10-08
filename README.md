@@ -22,8 +22,8 @@ This workflow reduces manual effort in recruitment, ensures objective candidate 
 
 ## Getting Started
 To use this workflow:
-1. Clone the repository.
+1. Clone the repository or download Recruitment Agent(1).json file from the repositery.
 2. Set up n8n on your machine or server.
 3. Configure API keys for OpenAI, Gmail, and Google Sheets.
-4. Import the workflow `.json` file into n8n.
+4. Import this Recuritment Agent`.json` file into n8n.
 5. Customize forms, scoring criteria, and email templates as needed.
