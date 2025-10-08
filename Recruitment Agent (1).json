@@ -1,0 +1,1021 @@
+{
+  "name": "Recruitment Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Resume",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Resume",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Targeting_field",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "ai_ml"
+                  },
+                  {
+                    "option": "frontend"
+                  },
+                  {
+                    "option": "Backend"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Job description "
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        -176
+      ],
+      "id": "b60ca31a-7bd1-4c72-8930-ce492f34d08b",
+      "name": "On form submission",
+      "webhookId": "8804c19b-ea19-4ca6-b534-0f635349681f"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "20ed782d-e3fd-4b1d-b9d5-bfdfe412aec9",
+              "leftValue": "={{ $json['Job-Description'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        -224
+      ],
+      "id": "dfb34c5b-b291-488c-afc7-d742ba163f21",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {
+          "clashHandling": {
+            "values": {
+              "resolveClash": "preferLast"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        528,
+        -224
+      ],
+      "id": "6fe4574a-62ac-415f-b6ce-d3f2b573ffcf",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4c4685ae-3eb2-4ec2-a546-e9814ba4bbe5",
+              "name": "Targeting_field",
+              "value": "={{ $json.Targeting_field }}",
+              "type": "string"
+            },
+            {
+              "id": "95e10fca-aa78-40fd-80ac-e9afbe6d84eb",
+              "name": "Job-Description",
+              "value": "={{ $json['Job description '] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        -176
+      ],
+      "id": "c953e4a5-39e4-4c45-865e-33252989ad2b",
+      "name": "Combine JD & Targeting field"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "=Resume",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        224,
+        -432
+      ],
+      "id": "a9daf419-480a-4c5a-9657-ac478f37912f",
+      "name": "Parsing pdf data"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -352
+      ],
+      "id": "43d033aa-9c07-4dac-b4ec-acc589191e3b",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "wtEkU8CBLYUELXGi",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Resume:  {{ $json.text }}\n\nJob description : {{ $json['Job-Description'] }} ",
+        "options": {
+          "systemMessage": "=You are a professional resume screening assistant. A candidate has submitted the following resume, and you are asked to compare it with the provided job description. Analyze and respond in detail by covering all key aspects.\n\n### Step-by-step Instructions:\n\n1. **Match Analysis**:  \n   - Identify what skills, qualifications, or experiences in the resume match the job description.  \n   - List the matched items clearly under a \"Matches\" section.\n\n2. **Missing Elements**:  \n   - Identify important skills, qualifications, or experiences **mentioned in the JD but missing in the resume**.  \n   - List these under a \"Missing / Not Found\" section.\n\n3. **Strengths**:  \n   - Mention 2-3 strong points of the resume that increase the chances of selection.\n\n4. **Weaknesses**:  \n   - Mention 2-3 areas where the resume is weak or lacking in alignment with the JD.\n\n5. **Suggestions for Improvement**:  \n   - Provide specific, actionable suggestions that the candidate can use to improve the resume and better align it with the JD.\n\n6. **Rating**:  \n   - Based on all factors (skills match, experience alignment, missing elements, and overall fit), give a **final rating out of 100** with reasoning.\n\n---\n\n### Job Description:\n{{ $json['Job-Description'] }}\n\n---\n\n### Resume:\n{{ $json.text }}\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        -528
+      ],
+      "id": "28962bf6-6997-415b-b5c2-f606e8b33e63",
+      "name": "Resume analysis with JD"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1440,
+        -208
+      ],
+      "id": "769a01bf-327e-4e28-a235-5f28e7dc2b90",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "nL2WEe0JF31B7Qbc",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        -208
+      ],
+      "id": "0312917c-d986-451f-bf8e-c7ffca0dc046",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1984,
+        -32
+      ],
+      "id": "59db3c53-d4d0-4325-9569-d1e680711660",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "wtEkU8CBLYUELXGi",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert resume reviewer helping recruiters evaluate how well a candidate’s resume fits a specific job role.\n\nHere is the resume text:\n\"\"\"\n{{ $('Merge').item.json.text }}\n\"\"\"\n\nHere is the required skillset for the target role:\n\"\"\"\n{{ $json.data }}\n\"\"\"\n\nEvaluate the resume based on how closely it matches the skills, tools, and experience from the target field.\n\nReturn your response in the following format:\n\nResume Score (out of 100): Tell the score\n\nPros:\n- <bullet points of strong matches>\n\nCons:\n- <bullet points of missing or weak areas>\n\nSuggestions:\n- <bullet points suggesting improvements to make the resume stronger for this role>\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        1968,
+        -208
+      ],
+      "id": "8833c207-989a-426e-8b45-736a18fc932a",
+      "name": "Resume analysis with predifined JD"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        80,
+        -896
+      ],
+      "id": "cc1ee734-6c75-41b5-9357-1703238388f5",
+      "name": "When chat message received",
+      "webhookId": "77871c74-e6c0-49ec-bb05-9e336c73fb26"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "626a44f9-9fa2-400d-9cbd-688f2c92f26d",
+              "leftValue": "={{ $('When chat message received').item.json.chatInput }}\n\n",
+              "rightValue": "={{ $json['User-ID'] }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        480,
+        -912
+      ],
+      "id": "32cf4608-9470-4a4e-a7a5-2c7c768f8ab9",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "02f1976b-b476-4249-8556-19e1508d1a49",
+              "name": "Resume",
+              "value": "={{ $json['Resume Text'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        720,
+        -944
+      ],
+      "id": "731513ea-a56e-4e69-b2f8-fbb440ecc9e1",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        928,
+        -784
+      ],
+      "id": "94c709e5-bf3a-4ce7-8cc7-9bb4258cfde2",
+      "name": "Google Gemini Chat Model2",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "wtEkU8CBLYUELXGi",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Resume:\n{{ $json.Resume }}\n\nQuestion:\n{{ $('When chat message received').item.json.chatInput }}\n",
+        "options": {
+          "systemMessage": "You are a professional resume assistant. You only answer questions using the provided resume text. Do not guess or invent anything not mentioned in the resume.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        880,
+        -992
+      ],
+      "id": "8f7a78ef-ab85-4b3c-b6f2-49d293672fac",
+      "name": "Resume Related Q/A"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4d81fd0b-1f73-49e7-9dbc-b5b650888594",
+              "leftValue": "={{ $json['Job description '] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        192,
+        288
+      ],
+      "id": "db0718a3-632f-451b-9986-58a7f761c29f",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Generate a professional, ATS-optimized resume based on the following job description:\n\n{{ $json['Job description '] }}\n\nUse this format:\n\n**Name**: [Add xyz]\n**Email**: [Add xyz]\n**Phone**: [Add xyz]\n**LinkedIn**: [Add xyz]\n\n---\n\n**Professional Summary**\nWrite a short 3-4 line summary that showcases the candidate’s fit for the job.\n\n---\n\n**Key Skills**\nList 8–12 relevant skills from the JD using bullet points.\n\n---\n\n**Professional Experience**\nFormat each experience as follows:\n\n**Job Title** – Company Name  \nMonth YYYY – Month YYYY  \n- Bullet 1  \n- Bullet 2  \n- Bullet 3\n\n(Use JD to infer responsibilities and impact.)\n\n---\n\n**Education**\nDegree – Institution  \nYear  \nOptional: Add Certifications if relevant.\n\n---\n\n**Projects or Achievements (if relevant)**\nInclude any 1–2 significant projects or recognitions if applicable.\n\n---\n\nOnly return the resume text, no introduction or notes.\n",
+        "options": {
+          "systemMessage": "You are a professional resume writer with expertise in generating ATS-friendly resumes. Your task is to create a clean, well-structured, and keyword-optimized resume that aligns with the given job description. The resume must be suitable for parsing by Applicant Tracking Systems (ATS), use formal tone, and follow modern formatting. Do not use tables or columns. Use clear section headings and bullet points for readability.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        448,
+        224
+      ],
+      "id": "48fdd89c-9e2f-46ed-a97e-0d9795ea31f2",
+      "name": "Creating Resume with JD"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        512,
+        432
+      ],
+      "id": "43926ab3-b101-4db9-a852-fdbfd85ddbb5",
+      "name": "Google Gemini Chat Model3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "wtEkU8CBLYUELXGi",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "={{ $json[\"Targeting_field\"] + \".txt\" }}",
+        "limit": 1,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        496,
+        592
+      ],
+      "id": "c86fbdc7-23b2-4644-afad-c639862873ca",
+      "name": "Search files and folders1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "nL2WEe0JF31B7Qbc",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        816,
+        576
+      ],
+      "id": "c5199418-a998-4d08-b78e-6cca1a3c4371",
+      "name": "Download file1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "nL2WEe0JF31B7Qbc",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        576
+      ],
+      "id": "5bb802a2-0b17-4b65-9dcc-0f8e8cfd2b7f",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        688
+      ],
+      "id": "2464a972-34fb-4aac-8f21-81bd58abbf93",
+      "name": "Google Gemini Chat Model4",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "wtEkU8CBLYUELXGi",
+          "name": "Google Gemini(PaLM) Api account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Target Role: \n{{ $('On form submission').item.json.Targeting_field }}\nRelevant skills and keywords:\n\n\nUsing the above, generate a fresh, complete, and ATS-optimized resume tailored specifically for this target role.\n",
+        "options": {
+          "systemMessage": "You are an expert resume writer. Using only the provided target role and relevant skills/keywords, write a brand-new, ATS-friendly resume that looks professional and clean. The resume should highlight strengths and capabilities aligned to the given role, even if no personal experience is provided.\n\nStructure the resume with the following sections:\n- Professional Summary\n- Skills\n- Tools & Technologies\n- Projects / Contributions\n- Certifications (if applicable)\n\nEnsure the tone is industry-standard and aligned with modern resume writing practices.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        1456,
+        544
+      ],
+      "id": "49f0fa49-d515-4b95-a542-5f0d84955e5c",
+      "name": "Creating Resume with Targeting role"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "13pO7VI42irax7fAQduL_hzBtA0uZc1-iRcyS2obwSys",
+          "mode": "list",
+          "cachedResultName": "Resume Q/A",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13pO7VI42irax7fAQduL_hzBtA0uZc1-iRcyS2obwSys/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13pO7VI42irax7fAQduL_hzBtA0uZc1-iRcyS2obwSys/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        288,
+        -912
+      ],
+      "id": "207c525f-3f90-4e91-8fbc-5a50e4264d3d",
+      "name": "Extracting data from sheet which added from form",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "z5k9yZEXpsMCQLh8",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "13pO7VI42irax7fAQduL_hzBtA0uZc1-iRcyS2obwSys",
+          "mode": "list",
+          "cachedResultName": "Resume Q/A",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13pO7VI42irax7fAQduL_hzBtA0uZc1-iRcyS2obwSys/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/13pO7VI42irax7fAQduL_hzBtA0uZc1-iRcyS2obwSys/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Resume Text": "={{ $json.text }}",
+            "User-ID": "={{ $('On form submission').item.json.Name }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "User-ID",
+              "displayName": "User-ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resume Text",
+              "displayName": "Resume Text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        528,
+        -480
+      ],
+      "id": "cb6e821b-4334-4e39-a8fa-d269fc2107a6",
+      "name": "Adding Resume in google sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "z5k9yZEXpsMCQLh8",
+          "name": "Google Sheets account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "={{ $json[\"Targeting_field\"] + \".txt\" }}",
+        "limit": 1,
+        "filter": {},
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        -208
+      ],
+      "id": "9839b706-831c-4794-9af1-3aa6f3a310e3",
+      "name": "Search files and folders",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "nL2WEe0JF31B7Qbc",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Hello This features Genrate a resume with two option :-\n\n1) I will provide JD so it will genrate a resume according to that JD.\n\n2) I will provide the targetting role so it will genrate a resume with the targetting role and in backend they will use the predefined JD which it will fetch from google drive.\n",
+        "height": 704,
+        "width": 1792,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        160,
+        112
+      ],
+      "typeVersion": 1,
+      "id": "847af910-f8ae-4cce-ae53-abfb37d5c2b8",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "This feature is a analyse the resume with two options :- \n\n1. It will Compare From JD which i will Provide with my resume and give the analyse report with score .\n\n2. It will compare with the targetting role which and predefined JD from Google drive.\n",
+        "height": 688,
+        "width": 2272
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        192,
+        -592
+      ],
+      "typeVersion": 1,
+      "id": "d1319af7-2cdc-430a-b154-95d42f7b8ee8",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "This is a chatbot feature -:\n\nIt resolves my query like eg- i don't want to read a resume so i will ask from this what are qualification of a person so it will provide a answer.\n \nIt saves a time and effort of a recruiter.\n",
+        "height": 448,
+        "width": 1520,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        32,
+        -1088
+      ],
+      "typeVersion": 1,
+      "id": "b4b0f786-5fca-4d43-996c-63e8a26adf9d",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "📝 Recruitment Agent \n\n**🎯 Goal:**  \nStreamline recruitment with automated resume handling and candidate support.  \n\n---\n\n## 🔑 Core Features\n1. 💬 **Chatbot (Resume Q&A)**  \n   - Candidates can ask resume-based questions.  \n\n2. 📊 **Resume Analysis**  \n   - Compare resume with JD/skillset & provide score + suggestions.  \n\n3. 📝 **Resume Generation**  \n   - Create or improve resumes tailored to roles.  \n\n---\n\n## 🚀 Impact\n- Faster hiring workflow  \n- Candidate-friendly experience  \n- Recruiter gets structured insights  \n",
+        "height": 640,
+        "width": 640,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -896,
+        -688
+      ],
+      "typeVersion": 1,
+      "id": "ee82d83b-3ed7-44e3-bde0-a0bde9a6b129",
+      "name": "Sticky Note2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Parsing pdf data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Combine JD & Targeting field",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine JD & Targeting field": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Parsing pdf data": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Adding Resume in google sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Resume analysis with JD",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search files and folders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Resume analysis with JD",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume analysis with JD": {
+      "main": [
+        []
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Resume analysis with predifined JD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Resume analysis with predifined JD",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Extracting data from sheet which added from form",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Resume Related Q/A",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Resume Related Q/A",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Creating Resume with JD",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search files and folders1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Creating Resume with JD": {
+      "main": [
+        []
+      ]
+    },
+    "Google Gemini Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Creating Resume with JD",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search files and folders1": {
+      "main": [
+        [
+          {
+            "node": "Download file1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file1": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Creating Resume with Targeting role",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Creating Resume with Targeting role",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extracting data from sheet which added from form": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search files and folders": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e7025482-e8cd-445f-83af-cf3080b086c3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0c43e22d92b836bc966b62f26ecec74e816f6171137b78a7576518472d634cf4"
+  },
+  "id": "XiwlLQK8ChtLKeYV",
+  "tags": [
+    {
+      "createdAt": "2025-07-27T08:39:17.380Z",
+      "updatedAt": "2025-07-27T08:39:17.380Z",
+      "id": "I8xO33bykFgMbc0I",
+      "name": "Resume analysis"
+    },
+    {
+      "createdAt": "2025-07-27T07:40:33.996Z",
+      "updatedAt": "2025-07-27T07:40:33.996Z",
+      "id": "hjD0rNzo0jC0O01P",
+      "name": "Resume Q/A"
+    }
+  ]
+}
